@@ -8,6 +8,7 @@ The aim with the creation of a GUI for the robot in this project, is give the ho
 The GUI is being developed using Qt designer with PyQt5. The interface could be runned with: python interfaceBot.py
 
 It is necessary to have the developer version of the next pyqtgraph. It can be installed with:
-  pip install git+https://github.com/pyqtgraph/pyqtgraph.git
+ 
+ pip install git+https://github.com/pyqtgraph/pyqtgraph.git
 
 This is because there is an issue of pyqtgraph with Python 3.8
