@@ -1,3 +1,18 @@
+#!/usr/bin/env python3.7
+'''
+    Para correr toda la interfaz:
+        python interfaceBot.py
+    Para cambiar de .ui a .py:
+        pyuic5 nombreArchivo.ui -o nombreArchivo.py
+    Para generar el archivo Imag_rc.py:
+        pyrcc5 Imag.qrc -o Imag_rc.py
+
+EDIT: Es necesario tener la developer version de PyQtGraph, se instala con:
+pip install git+https://github.com/pyqtgraph/pyqtgraph.git
+Debido a que pyqtgraph no funciona con Python 3.8
+
+'''
+
 import sys
 import os
 import pyqtgraph as pg
@@ -7,6 +22,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QApplication, QDialog, QTableWidgetItem
 from Pacientes_Ventana import *
 from AgregaPaciente_Ventana import *
+from EditarPaciente_Ventana import *
 from habOcupada_ventana import *
 from confirmElimin_ventana import *
 from Paciente import Paciente
@@ -56,7 +72,7 @@ class Ui_AgregaPac_ventana(QtWidgets.QMainWindow,Ui_AgregaPac_ventana):
 
     def aceptaDatos(self):
 
-        if(self.verificaHabitacion(self.comboBox_Habitacion.currentText())):
+        if(miHospital.verificaHabitacion(self.comboBox_Habitacion.currentText())):
             self.ventana_yaOcupada = Ui_habOcupada_ventana()
             self.ventana_yaOcupada.show()
         else:
@@ -101,13 +117,82 @@ class Ui_AgregaPac_ventana(QtWidgets.QMainWindow,Ui_AgregaPac_ventana):
         else:
             return self.radioButton_critico.text()
 
-    def verificaHabitacion(self, habSeleccionada):
-        length = len(miHospital.myArrayPacientes)
-        for i in range(length):
-            if(miHospital.myArrayPacientes[i].habitacion==habSeleccionada):
-                return True
 
-        return False
+class Ui_EditarPac_ventana(QtWidgets.QMainWindow,Ui_EditarPac_ventana):
+    def __init__(self, *args, **kwargs):
+        QtWidgets.QMainWindow.__init__(self, *args, **kwargs)
+        self.setupUi(self)
+
+        self.cajaNombre.setText(miHospital.myArrayPacientes[ultimoSeleccionado].nombre)
+        unIndexHab = self.comboBox_Habitacion.findText(miHospital.myArrayPacientes[ultimoSeleccionado].habitacion)
+        self.comboBox_Habitacion.setCurrentIndex(unIndexHab)
+        self.cajaDiagnostico.setText(miHospital.myArrayPacientes[ultimoSeleccionado].diagnostico)
+        self.cajaAlergias.setText(miHospital.myArrayPacientes[ultimoSeleccionado].alergias)
+        self.cajaComentario.setText(miHospital.myArrayPacientes[ultimoSeleccionado].comentario)
+        self.rellenaRadioButton(miHospital.myArrayPacientes[ultimoSeleccionado].gravedad)
+        unIndexPre = self.comboBox_preAlta.findText(miHospital.myArrayPacientes[ultimoSeleccionado].preAlta)
+        self.comboBox_preAlta.setCurrentIndex(unIndexPre)
+
+        print("Equis de")
+        self.Aceptar_bot_agrPac.clicked.connect(self.revisaDisponibilidadHabitacion)
+        self.Cancelar_bot_AgrPac.clicked.connect(self.cancelaDatos)
+
+    def revisaDisponibilidadHabitacion(self):
+        if(miHospital.verificaHabitacion(self.comboBox_Habitacion.currentText())):
+            if(self.comboBox_Habitacion.currentText()==miHospital.myArrayPacientes[ultimoSeleccionado].habitacion):                
+                self.aceptaDatosEditar()
+            else:
+                self.ventana_yaOcupada = Ui_habOcupada_ventana()
+                self.ventana_yaOcupada.show()
+        else:
+            self.aceptaDatosEditar()
+            miHospital.myArrayPacientes[ultimoSeleccionado].actualizarNombreArchivo()
+        
+        print("---Teoricamente el paciente fue editado---")
+
+    def aceptaDatosEditar(self):
+        global nombrePaciente
+        nombrePaciente = self.cajaNombre.toPlainText()
+        miHospital.myArrayPacientes[ultimoSeleccionado].nombre = nombrePaciente
+        habitacion = self.comboBox_Habitacion.currentText()
+        miHospital.myArrayPacientes[ultimoSeleccionado].habitacion = habitacion
+        diagnostico = self.cajaDiagnostico.toPlainText()
+        miHospital.myArrayPacientes[ultimoSeleccionado].diagnostico = diagnostico
+        alergias = self.cajaAlergias.toPlainText()
+        miHospital.myArrayPacientes[ultimoSeleccionado].alergias = alergias
+        comentario = self.cajaComentario.toPlainText()
+        miHospital.myArrayPacientes[ultimoSeleccionado].comentario = comentario
+        preAlta = self.comboBox_preAlta.currentText()
+        miHospital.myArrayPacientes[ultimoSeleccionado].preAlta = preAlta
+        gravedad = self.checaBotonGravedad()
+        miHospital.myArrayPacientes[ultimoSeleccionado].gravedad = gravedad            
+
+        ventanaPacientes.tablaPacientes.setItem(ultimoSeleccionado , 0, QtWidgets.QTableWidgetItem(nombrePaciente))
+        ventanaPacientes.tablaPacientes.setItem(ultimoSeleccionado , 1, QtWidgets.QTableWidgetItem(habitacion))
+        ventanaPacientes.tablaPacientes.setItem(ultimoSeleccionado , 2, QtWidgets.QTableWidgetItem(gravedad))
+        ventanaPacientes.tablaPacientes.setItem(ultimoSeleccionado , 3, QtWidgets.QTableWidgetItem(preAlta))
+        ventanaPacientes.muestraDatos_Paciente(ultimoSeleccionado)
+        self.close()
+
+    def cancelaDatos(self):
+        self.close()
+
+    def checaBotonGravedad(self):
+        if(self.radioButton_estable.isChecked()):
+            return self.radioButton_estable.text()
+        elif(self.radioButton_grave.isChecked()):
+            return self.radioButton_grave.text()
+        else:
+            return self.radioButton_critico.text()
+
+    def rellenaRadioButton(self, nivelGravedad):
+        if(nivelGravedad=="Estable"):
+            self.radioButton_estable.setChecked(True)
+        elif(nivelGravedad=="Grave"):
+            self.radioButton_grave.setChecked(True)
+        else:
+            self.radioButton_critico.setChecked(True)      
+
 
 class Ui_PacientesVentana(QtWidgets.QMainWindow,Ui_PacientesVentana, QDialog):   #QDialog?
     def __init__(self, *args, **kwargs):
@@ -116,6 +201,7 @@ class Ui_PacientesVentana(QtWidgets.QMainWindow,Ui_PacientesVentana, QDialog):  
         self.AgregPac_Boton.clicked.connect(self.AgregaPaciente)
         self.tablaPacientes.itemClicked.connect(self.item_click)
         self.EliminaPac_boton.clicked.connect(self.EliminaPaciente)
+        self.EditarPac_boton.clicked.connect(self.editarPaciente)
 
         self.etiqueta_diagnostico.setReadOnly(True)
         self.etiqueta_alergias.setReadOnly(True)
@@ -243,7 +329,13 @@ class Ui_PacientesVentana(QtWidgets.QMainWindow,Ui_PacientesVentana, QDialog):  
         self.grafica_oximetria.setObjectName("grafica_oximetria")
         self.gridLayout.addWidget(self.grafica_oximetria, 15, 0, 1, 5)
 
-        self.formatoGraficas()           
+        self.formatoGraficas()
+
+    def editarPaciente(self):
+        if(ultimoSeleccionado!= -1):
+            self.ventana_EditarPaciente = Ui_EditarPac_ventana()
+            self.ventana_EditarPaciente.show()
+          
 
 def on_message(client, userdata, msg):
     #FUNCION QUE SE EJECUTE CUANDO SE RECIBA UN NUEVO DATO POR ALGUN TOPICO
@@ -257,8 +349,15 @@ if __name__ == "__main__":
     miHospital = Hospital()
 
     appi = QtWidgets.QApplication([])
-    ventanaPacientes = Ui_PacientesVentana()    
+    ventanaPacientes = Ui_PacientesVentana()
+
+    miHospital.leerBaseDeDatosHospital(miHospital.nombreArchivoHospital, ventanaPacientes)
+    miHospital.cargarDatos_TempOxi_Pacientes()
+    
     ventanaPacientes.show()
     appi.exec_()
+
+    miHospital.guardarBaseDeDatosHospital()
+    miHospital.guardarDatos_TempOxi_Pacientes()
 
     print("Hola")
